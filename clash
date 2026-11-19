@@ -5,12 +5,21 @@ mode: rule
 log-level: info
 ipv6: true
 external-controller: 127.0.0.1:10000
+
+geodata-mode: true
+geo-auto-update: true
+geo-update-interval: 24
+geox-url:
+  geosite: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
+  geoip: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
+  mmdb: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.metadb"
+
 experimental:
   ignore-resolve-fail: true
+
 sniffer:
   enable: true
   override-destination: true
-  force-dns-mapping: true
   parse-pure-ip: true
   sniff:
     HTTP:
@@ -22,18 +31,63 @@ sniffer:
     QUIC:
       ports: [443, 8443]
       override-destination: true
+
 dns:
   enable: true
-  ipv6: true # false
-  enhanced-mode: fake-ip # redir-host / fake-ip
+  ipv6: false
+  enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-  fake-ip-filter:
-    - "*"
-    - "+.lan"
-    - "+.local"
+  fake-ip-filter-mode: blacklist
+  prefer-h3: false
+  respect-rules: true
   use-hosts: true
-  default-nameserver: ['223.5.5.5', '1.12.12.12']
-  nameserver: ['tls://223.5.5.5:853', 'tls://1.12.12.12:853']
+  use-system-hosts: false
+
+  fake-ip-filter:
+    - '+.lan'
+    - '+.local'
+    - '+.localdomain'
+    - '+.arpa'
+    - 'localhost.ptlogin2.qq.com'
+    - 'time.*.com'
+    - 'time.*.apple.com'
+    - 'ntp.*.com'
+    - '+.pool.ntp.org'
+    - '+.stun.*.*'
+    - '+.stun.*.*.*'
+    - 'stun.l.google.com'
+    - 'lens.l.google.com'
+    - '+.msftconnecttest.com'
+    - '+.msftncsi.com'
+    - '+.market.xiaomi.com'
+    - '+.miwifi.com'
+
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+
+  nameserver:
+    - https://1.1.1.1/dns-query
+    - https://8.8.8.8/dns-query
+
+  nameserver-policy:
+    "geosite:category-ads-all": rcode://success
+    "geosite:geolocation-!cn":
+      - https://1.1.1.1/dns-query
+      - https://8.8.8.8/dns-query
+    "geosite:cn":
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
+    "geosite:private":
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
+
+  direct-nameserver:
+    - https://dns.alidns.com/dns-query
+  direct-nameserver-follow-policy: false
+
+  proxy-server-nameserver:
+    - https://doh.pub/dns-query
 
 ######### 锚点 start #######
 # 策略组相关
@@ -47,9 +101,9 @@ u: &u {use: ['NODE_NAME']}
 proxy-providers:
   # 从本地导入的 clash 配置文件
   # local:
-  #  <<: *p
-  # type: file
-  #  path: ./profiles/nodes.yaml
+  #   <<: *p
+  #   type: file
+  #   path: ./profiles/nodes.yaml
 
   # 从链接导入的配置文件（支持多个Clash 订阅链接）
   NODE_NAME:
@@ -69,9 +123,9 @@ proxy-groups:
   - { name: 🐟 漏网之鱼, type: select, proxies: ['🚀 节点选择',DIRECT,'♻️ 自动选择'], <<: *u }
 
 rules:
-  # - AND,(AND,(DST-PORT,443),(NETWORK,UDP)),(GEOSITE,geolocation-!cn),REJECT # quic
   - GEOSITE,youtube,▶️ YouTube
   - OR,((DOMAIN,gemini.google.com),(DOMAIN,bard.google.com),(GEOSITE,openai)),🤖 ChatGPT
+  - DOMAIN-SUFFIX,jsdelivr.net,DIRECT
   - RULE-SET,applications,DIRECT
   - DOMAIN,clash.razord.top,DIRECT
   - DOMAIN,yacd.haishan.me,DIRECT
